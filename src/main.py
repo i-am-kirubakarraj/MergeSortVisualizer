@@ -30,8 +30,55 @@ class MergeSortVisualizer:
         self.root.update_idletasks()
 
     def merge_sort(self):
-        # Implement merge sort algorithm
-        pass
+        if len(self.data) > 1:
+            mid = len(self.data) // 2
+            left_half = self.data[:mid]
+            right_half = self.data[mid:]
+
+            # Recursive calls to divide and sort each half
+            self.data = self.merge_sort_helper(left_half)
+            self.data = self.merge_sort_helper(right_half)
+
+            # Merge sorted halves
+            merged_data = []
+            i = j = 0
+            while i < len(left_half) and j < len(right_half):
+                if left_half[i] < right_half[j]:
+                    merged_data.append(left_half[i])
+                    i += 1
+                else:
+                    merged_data.append(right_half[j])
+                    j += 1
+            
+            # Append remaining elements
+            merged_data.extend(left_half[i:])
+            merged_data.extend(right_half[j:])
+
+            # Update data and visualize
+            self.data = merged_data
+            self.draw_data(self.data, ['green' for _ in range(len(self.data))])
+
+    def merge_sort_helper(self, arr):
+        # Base case for recursion
+        if len(arr) <= 1:
+            return arr
+
+        mid = len(arr) // 2
+        left_half = self.merge_sort_helper(arr[:mid])
+        right_half = self.merge_sort_helper(arr[mid:])
+
+        return self.merge(left_half, right_half)
+
+    def merge(self, left, right):
+        merged = []
+        while left and right:
+            if left[0] < right[0]:
+                merged.append(left.pop(0))
+            else:
+                merged.append(right.pop(0))
+        merged.extend(left or right)
+        return merged
+
 
 if __name__ == "__main__":
     root = tk.Tk()
@@ -42,3 +89,4 @@ if __name__ == "__main__":
     generate_button.pack()
 
     root.mainloop()
+
