@@ -1,16 +1,45 @@
 import tkinter as tk
+from tkinter import messagebox
+import ctypes
 import random
+import time
+import threading
+
+# Load the shared library
+if ctypes.sizeof(ctypes.c_voidp) == 4:
+    merge_sort_lib = ctypes.CDLL('./merge_sort.dll')
+else:
+    merge_sort_lib = ctypes.CDLL('./merge_sort.so')
+
+merge_sort_lib.merge_sort.argtypes = (ctypes.POINTER(ctypes.c_int), ctypes.c_int, ctypes.c_int)
 
 class MergeSortVisualizer:
     def __init__(self, root):
         self.root = root
         self.root.title("Merge Sort Visualizer")
-        self.canvas = tk.Canvas(root, width=800, height=400, bg='white')
+
+        self.frame = tk.Frame(root)
+        self.frame.pack(padx=10, pady=10)
+
+        self.canvas = tk.Canvas(self.frame, width=800, height=400, bg='white')
         self.canvas.pack()
+
+        self.entry = tk.Entry(self.frame, width=50)
+        self.entry.pack(pady=5)
+        self.entry.insert(0, 'Enter numbers separated by commas')
+
+        self.sort_button = tk.Button(self.frame, text='Sort', command=self.start_sorting)
+        self.sort_button.pack(pady=5)
+
+        self.result_var = tk.StringVar()
+        self.result_label = tk.Label(self.frame, textvariable=self.result_var)
+        self.result_label.pack(pady=5)
+
         self.data = []
+        self.is_sorting = False
 
     def generate_data(self):
-        self.data = [random.randint(10, 100) for _ in range(50)]
+        self.data = [random.randint(10, 100) for _ in range(10)]
         self.draw_data(self.data, ['blue' for _ in range(len(self.data))])
 
     def draw_data(self, data, color_array):
@@ -30,55 +59,35 @@ class MergeSortVisualizer:
         self.root.update_idletasks()
 
     def merge_sort(self):
-        if len(self.data) > 1:
-            mid = len(self.data) // 2
-            left_half = self.data[:mid]
-            right_half = self.data[mid:]
+        self.is_sorting = True
+        arr_type = ctypes.c_int * len(self.data)
+        c_array = arr_type(*self.data)
 
-            # Recursive calls to divide and sort each half
-            self.data = self.merge_sort_helper(left_half)
-            self.data = self.merge_sort_helper(right_half)
+        def merge_sort_thread():
+            merge_sort_lib.merge_sort(c_array, 0, len(self.data) - 1)
+            self.data = list(c_array)
+            self.is_sorting = False
 
-            # Merge sorted halves
-            merged_data = []
-            i = j = 0
-            while i < len(left_half) and j < len(right_half):
-                if left_half[i] < right_half[j]:
-                    merged_data.append(left_half[i])
-                    i += 1
-                else:
-                    merged_data.append(right_half[j])
-                    j += 1
-            
-            # Append remaining elements
-            merged_data.extend(left_half[i:])
-            merged_data.extend(right_half[j:])
+        threading.Thread(target=merge_sort_thread).start()
+        self.visualize_sort()
 
-            # Update data and visualize
-            self.data = merged_data
-            self.draw_data(self.data, ['green' for _ in range(len(self.data))])
+    def visualize_sort(self):
+        while self.is_sorting:
+            self.draw_data(self.data, ['green' if i < 2 else 'blue' for i in range(len(self.data))])
+            time.sleep(0.5)
 
-    def merge_sort_helper(self, arr):
-        # Base case for recursion
-        if len(arr) <= 1:
-            return arr
+        self.draw_data(self.data, ['green' for _ in range(len(self.data))])
+        self.result_var.set(f'Sorted Array: {self.data}')
 
-        mid = len(arr) // 2
-        left_half = self.merge_sort_helper(arr[:mid])
-        right_half = self.merge_sort_helper(arr[mid:])
-
-        return self.merge(left_half, right_half)
-
-    def merge(self, left, right):
-        merged = []
-        while left and right:
-            if left[0] < right[0]:
-                merged.append(left.pop(0))
-            else:
-                merged.append(right.pop(0))
-        merged.extend(left or right)
-        return merged
-
+    def start_sorting(self):
+        if not self.is_sorting:
+            try:
+                self.data = list(map(int, self.entry.get().split(',')))
+                if len(self.data) < 2:
+                    raise ValueError("Please enter at least two numbers.")
+                self.merge_sort()
+            except Exception as e:
+                messagebox.showerror('Error', str(e))
 
 if __name__ == "__main__":
     root = tk.Tk()
@@ -89,4 +98,3 @@ if __name__ == "__main__":
     generate_button.pack()
 
     root.mainloop()
-
